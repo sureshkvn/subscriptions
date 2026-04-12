@@ -1,0 +1,28 @@
+# ============================================================
+# Spring profile: job
+#
+# Active when the billing dispatcher Cloud Run Job starts.
+# Disables the embedded web server so the ApplicationRunner
+# can do its work and exit cleanly.
+# ============================================================
+
+spring:
+  main:
+    # Do not start an HTTP server — this is a batch job, not a service.
+    web-application-type: none
+
+  # Re-use the same datasource and JPA settings from application.yml.
+  # In production the datasource URL is overridden via environment variables:
+  #   SPRING_DATASOURCE_URL=jdbc:postgresql://<host>/<db>
+  #   SPRING_DATASOURCE_USERNAME=...
+  #   SPRING_DATASOURCE_PASSWORD=...
+  jpa:
+    hibernate:
+      # Jobs must never recreate the schema — validate only.
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    com.sureshkvn.subscriptions.billing.job: INFO
+    com.sureshkvn.subscriptions.billing.messaging: INFO

@@ -1,0 +1,65 @@
+# =============================================================================
+# Cloud Scheduler job definitions for the billing dispatcher.
+#
+# Deploy with:
+#   gcloud scheduler jobs create http billing-hourly-dispatcher \
+#       --schedule="0 * * * *" \
+#       --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/PROJECT_ID/jobs/billing-dispatcher:run" \
+#       --message-body='{"overrides":{"containerOverrides":[{"env":[{"name":"BILLING_INTERVALS","value":"HOURLY"}]}]}}' \
+#       --oauth-service-account-email=scheduler-sa@PROJECT_ID.iam.gserviceaccount.com \
+#       --location=us-central1
+#
+# Or apply the declarative specs below using Terraform / gcloud SDK.
+# =============================================================================
+
+# ---
+# Job 1: Hourly billing dispatcher
+# Triggers every hour on the hour; only processes HOURLY subscriptions.
+# ---
+hourly_job:
+  name: billing-hourly-dispatcher
+  description: "Dispatches billing events for all HOURLY subscriptions"
+  schedule: "0 * * * *"          # every hour
+  time_zone: UTC
+  attempt_deadline: 180s          # 3-minute timeout for the HTTP trigger call
+  retry_config:
+    retry_count: 3
+  http_target:
+    uri: "https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/PROJECT_ID/jobs/billing-dispatcher:run"
+    http_method: POST
+    oauth_token:
+      service_account_email: "scheduler-sa@PROJECT_ID.iam.gserviceaccount.com"
+    body: |
+      {
+        "overrides": {
+          "containerOverrides": [{
+            "env": [{ "name": "BILLING_INTERVALS", "value": "HOURLY" }]
+          }]
+        }
+      }
+
+# ---
+# Job 2: Daily billing dispatcher
+# Triggers once per day; processes DAILY, WEEKLY, MONTHLY, YEARLY, CUSTOM subscriptions.
+# ---
+daily_job:
+  name: billing-daily-dispatcher
+  description: "Dispatches billing events for DAILY/WEEKLY/MONTHLY/YEARLY subscriptions"
+  schedule: "5 0 * * *"          # 00:05 UTC every day (5-minute buffer after midnight)
+  time_zone: UTC
+  attempt_deadline: 180s
+  retry_config:
+    retry_count: 3
+  http_target:
+    uri: "https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/PROJECT_ID/jobs/billing-dispatcher:run"
+    http_method: POST
+    oauth_token:
+      service_account_email: "scheduler-sa@PROJECT_ID.iam.gserviceaccount.com"
+    body: |
+      {
+        "overrides": {
+          "containerOverrides": [{
+            "env": [{ "name": "BILLING_INTERVALS", "value": "DAILY,WEEKLY,MONTHLY,YEARLY,CUSTOM" }]
+          }]
+        }
+      }

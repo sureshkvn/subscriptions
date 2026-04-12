@@ -1,0 +1,65 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: billing-dispatcher
+  labels:
+    app: subscriptions
+    component: billing-dispatcher
+spec:
+  template:
+    spec:
+      # ------------------------------------------------------------------
+      # Task parallelism — increase TASK_COUNT for higher throughput.
+      # Each task processes MOD(subscription.id, taskCount) = taskIndex.
+      # ------------------------------------------------------------------
+      taskCount: 4
+      parallelism: 4
+      maxRetries: 1
+      template:
+        spec:
+          serviceAccountName: billing-dispatcher@PROJECT_ID.iam.gserviceaccount.com
+          timeoutSeconds: 3600   # 1-hour hard limit per task
+          containers:
+            - name: billing-dispatcher
+              image: REGION-docker.pkg.dev/PROJECT_ID/subscriptions/billing-dispatcher:latest
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              env:
+                # Spring profile activates the job ApplicationRunner
+                - name: SPRING_PROFILES_ACTIVE
+                  value: job
+
+                # Processed intervals — set to HOURLY for the hourly job,
+                # DAILY,WEEKLY,MONTHLY,YEARLY for the daily job.
+                - name: BILLING_INTERVALS
+                  value: DAILY,WEEKLY,MONTHLY,YEARLY
+
+                # Cloud Run injects these automatically for each task instance.
+                # Listed here for documentation; do NOT override manually.
+                # - CLOUD_RUN_TASK_INDEX  (0-based)
+                # - CLOUD_RUN_TASK_COUNT  (matches taskCount above)
+
+                # Database connection — sourced from Secret Manager
+                - name: SPRING_DATASOURCE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: db-url
+                      key: latest
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: db-username
+                      key: latest
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: db-password
+                      key: latest
+
+                # GCP project — auto-detected via Workload Identity in Cloud Run
+                - name: SPRING_CLOUD_GCP_PROJECT_ID
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['run.googleapis.com/project-id']

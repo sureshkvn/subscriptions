@@ -3,6 +3,7 @@ package com.sureshkvn.subscriptions.billing.model;
 import com.sureshkvn.subscriptions.subscription.model.Subscription;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -31,6 +32,13 @@ import java.time.Instant;
         indexes = {
                 @Index(name = "idx_billing_subscription", columnList = "subscription_id"),
                 @Index(name = "idx_billing_status",       columnList = "status")
+        },
+        uniqueConstraints = {
+                // Idempotency guard: only one billing cycle per (subscription, period_start).
+                // If a duplicate event arrives, the INSERT throws DataIntegrityViolationException
+                // which the service treats as "already processed" and acks without re-charging.
+                @UniqueConstraint(name = "uq_billing_sub_period_start",
+                        columnNames = {"subscription_id", "period_start"})
         })
 @Getter
 @Setter

@@ -72,6 +72,24 @@ springdoc:
     tagsSorter: alpha
   show-actuator: false
 
+# Google Cloud Pub/Sub — overridden per environment (dev uses emulator, prod uses real GCP)
+spring:
+  cloud:
+    gcp:
+      pubsub:
+        # In production set SPRING_CLOUD_GCP_PROJECT_ID env var instead of hardcoding here.
+        # For local dev, point at the Pub/Sub emulator:
+        #   gcloud beta emulators pubsub start
+        #   export PUBSUB_EMULATOR_HOST=localhost:8085
+        emulator-host: ${PUBSUB_EMULATOR_HOST:}
+
+# Billing job configuration
+billing:
+  pubsub:
+    topic: subscription.billing.due
+    subscription: subscription.billing.due-sub
+    dead-letter-topic: subscription.billing.failed
+
 # Logging
 logging:
   level:
