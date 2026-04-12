@@ -13,12 +13,24 @@ import java.time.Instant;
  *
  * <p>One billing cycle is created each time a subscription renews or is invoiced.
  * This provides a full audit trail of all charges.
+ *
+ * <h2>Discount fields</h2>
+ * <ul>
+ *   <li>{@code originalAmount} — the plan's base price at the time of invoicing,
+ *       before any coupon discounts are applied.</li>
+ *   <li>{@code totalDiscountAmount} — the sum of all active coupon discount contributions
+ *       computed using the parallel strategy at billing time. Always ≥ 0.</li>
+ *   <li>{@code amount} — the final charged amount ({@code originalAmount − totalDiscountAmount}),
+ *       guaranteed to be ≥ 0.00 in the subscription's currency.</li>
+ * </ul>
+ * Both {@code originalAmount} and {@code totalDiscountAmount} are nullable to support
+ * existing records created before discount tracking was introduced.
  */
 @Entity
 @Table(name = "billing_cycles",
         indexes = {
                 @Index(name = "idx_billing_subscription", columnList = "subscription_id"),
-                @Index(name = "idx_billing_status", columnList = "status")
+                @Index(name = "idx_billing_status",       columnList = "status")
         })
 @Getter
 @Setter
@@ -35,6 +47,24 @@ public class BillingCycle {
     @JoinColumn(name = "subscription_id", nullable = false)
     private Subscription subscription;
 
+    /**
+     * The plan's base price at invoice time, before discounts.
+     * Nullable for backward compatibility with pre-discount billing records.
+     */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal originalAmount;
+
+    /**
+     * Sum of all active coupon discount contributions at billing time (parallel strategy).
+     * Nullable for backward compatibility. Always ≥ 0 when present.
+     */
+    @Column(precision = 10, scale = 2)
+    private BigDecimal totalDiscountAmount;
+
+    /**
+     * Final charged amount after discounts ({@code originalAmount − totalDiscountAmount}),
+     * floored at 0.00 in the subscription's currency.
+     */
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 

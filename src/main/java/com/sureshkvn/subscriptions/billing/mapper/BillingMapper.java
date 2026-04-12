@@ -12,6 +12,9 @@ import org.mapstruct.MappingConstants;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface BillingMapper {
 
-    @Mapping(source = "subscription.id", target = "subscriptionId")
+    @Mapping(source = "subscription.id",    target = "subscriptionId")
+    @Mapping(source = "originalAmount",     target = "originalAmount")
+    @Mapping(source = "totalDiscountAmount",target = "totalDiscountAmount")
+    @Mapping(source = "amount",             target = "amount")
     BillingCycleResponse toResponse(BillingCycle billingCycle);
 }

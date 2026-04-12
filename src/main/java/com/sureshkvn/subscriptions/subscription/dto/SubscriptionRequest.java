@@ -6,9 +6,17 @@ import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Inbound DTO for creating a new subscription.
+ *
+ * <p>{@code couponCodes} is optional. If provided, all codes are validated and redeemed
+ * atomically within the same transaction as subscription creation:
+ * <ul>
+ *   <li>A single non-stackable code is allowed on its own.</li>
+ *   <li>Multiple codes are allowed only if every code in the list is stackable.</li>
+ * </ul>
  */
 @Builder
 public record SubscriptionRequest(
@@ -21,9 +29,16 @@ public record SubscriptionRequest(
         Long planId,
 
         /** Optional override for when the subscription starts; defaults to now. */
-        Instant startDate
+        Instant startDate,
+
+        /**
+         * Optional list of coupon codes to apply at creation time.
+         * {@code null} and empty list are both treated as "no coupons".
+         */
+        List<String> couponCodes
 ) {
     public SubscriptionRequest {
         startDate = (startDate == null) ? Instant.now() : startDate;
+        couponCodes = (couponCodes == null) ? List.of() : couponCodes;
     }
 }
